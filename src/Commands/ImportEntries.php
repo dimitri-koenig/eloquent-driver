@@ -54,31 +54,59 @@ class ImportEntries extends Command
 
     private function importEntries()
     {
-        $entries = Entry::all();
+        $entries = Entry::all()->keyBy(fn ($entry) => $entry->id());
 
-        $entriesWithOrigin = $entries->filter->hasOrigin();
         $entriesWithoutOrigin = $entries->filter(function ($entry) {
             return ! $entry->hasOrigin();
         });
 
-        if ($entriesWithOrigin->count() > 0) {
+        if ($entriesWithoutOrigin->count() > 0) {
             $this->info('Importing origin entries');
         }
 
-        $this->withProgressBar($entriesWithoutOrigin, function ($entry) {
+        $this->withProgressBar($entriesWithoutOrigin, function ($entry) use($entries) {
             $lastModified = $entry->fileLastModified();
             $entry->toModel()->fill(['created_at' => $lastModified, 'updated_at' => $lastModified])->save();
+
+            $entries->forget($entry->id());
         });
 
-        if ($entriesWithOrigin->count() > 0) {
+        do {
+            $entriesWithOrigin = $entries->filter(function ($entry) use ($entriesWithoutOrigin) {
+                $origin = $entry->fluentlyGetOrSet('origin')->args([]);
+
+                if (is_string($origin)) {
+                    return $entriesWithoutOrigin->has($origin);
+                }
+
+                if (is_object($origin)) {
+                    $origin = $origin->id();
+                }
+
+                return $origin && $entriesWithoutOrigin->has($origin);
+            });
+
             $this->newLine();
             $this->info('Importing localized entries');
 
-            $this->withProgressBar($entriesWithOrigin, function ($entry) {
+            $processedEntries = collect();
+            $this->withProgressBar($entriesWithOrigin, function ($entry) use ($entries, $processedEntries) {
                 $lastModified = $entry->fileLastModified();
-                $entry->toModel()->fill(['created_at' => $lastModified, 'updated_at' => $lastModified])->save();
+                $newEntry = $entry->toModel()->fill(['created_at' => $lastModified, 'updated_at' => $lastModified]);
+                $newEntry->save();
+                $processedEntries->push($entry);
+                $entries->forget($entry->id());
             });
-        }
+            $entriesWithoutOrigin = $processedEntries->keyBy(fn ($entry) => $entry->id);
+        } while ($entriesWithOrigin->count());
+
+        $this->newLine();
+        $this->info('Importing remaining localized entries');
+
+        $this->withProgressBar($entries, function ($entry) {
+            $lastModified = $entry->fileLastModified();
+            $entry->toModel()->fill(['created_at' => $lastModified, 'updated_at' => $lastModified])->save();
+        });
 
         $this->newLine();
         $this->info('Entries imported');

@@ -60,9 +60,7 @@ class Term extends FileEntry
             unset($data['template']);
         }
 
-        if ($source->blueprint && $source->taxonomy()->termBlueprints()->count() > 1) {
-            $data['blueprint'] = $source->blueprint;
-        }
+        $data['blueprint'] = $source->blueprint;
 
         $source->localizations()->keys()->reduce(function ($data, $locale) use ($source) {
             $data[$locale] = $source->dataForLocale($locale)->toArray();

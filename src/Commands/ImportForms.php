@@ -64,6 +64,7 @@ class ImportForms extends Command
             ]);
             $model->save();
 
+            /*
             $form->submissions()->each(function ($submission) use ($model) {
                 $timestamp = (new SubmissionModel())->fromDateTime($submission->date());
 
@@ -72,6 +73,7 @@ class ImportForms extends Command
                     'updated_at' => $timestamp,
                 ])->save();
             });
+            */
         });
 
         $this->newLine();

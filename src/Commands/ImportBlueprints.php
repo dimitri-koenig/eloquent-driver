@@ -60,7 +60,9 @@ class ImportBlueprints extends Command
 
     private function importBlueprints()
     {
-        $directory = resource_path('blueprints');
+        $tenant = \Current::tenant();
+        $configDirectory = $tenant->group === 'digital-construction-site' ? "content/$tenant->group/_config/" : "content-config/$tenant->group/";
+        $directory = base_path(sprintf('%sblueprints', $configDirectory));
 
         $files = File::withAbsolutePaths()
             ->getFilesByTypeRecursively($directory, 'yaml');
@@ -110,7 +112,9 @@ class ImportBlueprints extends Command
 
     private function importFieldsets()
     {
-        $directory = resource_path('fieldsets');
+        $tenant = \Current::tenant();
+        $configDirectory = $tenant->group === 'digital-construction-site' ? "content/$tenant->group/_config/" : "content-config/$tenant->group/";
+        $directory = base_path(sprintf('%sfieldsets', $configDirectory));
 
         $files = File::withAbsolutePaths()
             ->getFilesByTypeRecursively($directory, 'yaml');
@@ -141,6 +145,11 @@ class ImportBlueprints extends Command
 
     private function getNamespaceAndHandle($blueprint)
     {
+        $tenant = \Current::tenant();
+        $configDirectory = $tenant->group === 'digital-construction-site' ? "content/$tenant->group/_config/" : "content-config/$tenant->group/";
+        $directory = base_path(sprintf('%sblueprints/', $configDirectory));
+
+        $blueprint = str_replace($directory, '', $blueprint);
         $blueprint = str_replace('/', '.', $blueprint);
         $parts = explode('.', $blueprint);
         $handle = array_pop($parts);
